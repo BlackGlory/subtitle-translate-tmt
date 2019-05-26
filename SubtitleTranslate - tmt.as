@@ -223,18 +223,24 @@ string GetTitle() {
 }
 
 string GetVersion() {
-  return "1";
+  return '1';
 }
 
 string GetDesc() {
   return
-    '<a href="https://github.com/BlackGlory/subtitle-translate-tmt">Extension Source Code</a>'
+    '<a href="https://github.com/BlackGlory/subtitle-translate-tmt">'
+      'Extension Source Code'
+    '</a>'
     ' '
-    '<a href=\"https://cloud.tencent.com/product/tmt\">About TMT</a>';
+    '<a href="https://cloud.tencent.com/product/tmt">'
+      'About TMT'
+    '</a>';
 }
 
 string GetLoginTitle() {
-  return "Input Tencent Cloud API key";
+  return
+    '{$CP936=填写 API 密钥$}'
+    '{$CP0=Input Tencent Cloud API key$}';
 }
 
 string GetLoginDesc() {
