@@ -64,8 +64,59 @@ dictionary SrcLangTable = {
 string secretId = '';
 string secretKey = '';
 
+datetime getUnix() {
+	array<datetime> timezone = {
+		datetime(1969, 12, 31, 12, 0, 0) // UTC-12:00
+	, datetime(1969, 12, 31, 13, 0, 0) // UTC-11:00
+	, datetime(1969, 12, 31, 14, 0, 0) // UTC-10:00
+	, datetime(1969, 12, 31, 14, 30, 0) // UTC-09:30
+	, datetime(1969, 12, 31, 15, 0, 0) // UTC-09:00
+	, datetime(1969, 12, 31, 16, 0, 0) // UTC-08:00
+	, datetime(1969, 12, 31, 17, 0, 0) // UTC-07:00
+	, datetime(1969, 12, 31, 18, 0, 0) // UTC-06:00
+	, datetime(1969, 12, 31, 19, 0, 0) // UTC-05:00
+	, datetime(1969, 12, 31, 20, 0, 0) // UTC-04:00
+	, datetime(1969, 12, 31, 20, 30, 0) // UTC-03:30
+	, datetime(1969, 12, 31, 21, 0, 0) // UTC-03:00
+	, datetime(1969, 12, 31, 22, 0, 0) // UTC-02:00
+	, datetime(1969, 12, 31, 23, 0, 0) // UTC-01:00
+	, datetime(1970, 1, 1, 0, 0, 0) // UTC+00:00
+	, datetime(1970, 1, 1, 1, 0, 0) // UTC+01:00
+	, datetime(1970, 1, 1, 2, 0, 0) // UTC+02:00
+	, datetime(1970, 1, 1, 3, 0, 0) // UTC+03:00
+	, datetime(1970, 1, 1, 3, 30, 0) // UTC+03:30
+	, datetime(1970, 1, 1, 4, 0, 0) // UTC+04:00
+	, datetime(1970, 1, 1, 4, 30, 0) // UTC+04:30
+	, datetime(1970, 1, 1, 5, 0, 0) // UTC+05:00
+	, datetime(1970, 1, 1, 5, 30, 0) // UTC+05:30
+	, datetime(1970, 1, 1, 5, 45, 0) // UTC+05:45
+	, datetime(1970, 1, 1, 6, 0, 0) // UTC+06:00
+	, datetime(1970, 1, 1, 6, 30, 0) // UTC+06:30
+	, datetime(1970, 1, 1, 7, 0, 0) // UTC+07:00
+	, datetime(1970, 1, 1, 8, 0, 0) // UTC+08:00
+	, datetime(1970, 1, 1, 8, 45, 0) // UTC+08:45
+	, datetime(1970, 1, 1, 9, 0, 0) // UTC+09:00
+	, datetime(1970, 1, 1, 9, 30, 0) // UTC+09:30
+	, datetime(1970, 1, 1, 10, 0, 0) // UTC+10:00
+	, datetime(1970, 1, 1, 10, 30, 0) // UTC+10:30
+	, datetime(1970, 1, 1, 11, 0, 0) // UTC+11:00
+	, datetime(1970, 1, 1, 11, 30, 0) // UTC+11:30
+	, datetime(1970, 1, 1, 12, 0, 0) // UTC+12:00
+	, datetime(1970, 1, 1, 12, 45, 0) // UTC+12:45
+	, datetime(1970, 1, 1, 13, 0, 0) // UTC+13:00
+	, datetime(1970, 1, 1, 14, 0, 0) // UTC+14:00
+	};
+	for (uint i = 0, length = timezone.length(); i < length; i++) {
+		datetime unix = timezone[i];
+		if (unix.get_year() == 1969 || unix.get_year() == 1970) { // invalid value will be reset to now
+			return unix;
+		}
+	}
+	return datetime(1970, 1, 1);
+}
+
 uint getTimestamp() {
-	datetime unix = datetime(1970, 1, 1, 8, 0, 0); // hardcoded UTC+8
+	datetime unix = getUnix();
 	datetime now = datetime();
 	uint timestamp = now - unix;
 	return timestamp;
@@ -114,7 +165,7 @@ string repeat(string str, uint times) {
 string xorStr(string leftStr, string rightStr) {
 	string result = '';
 	result.resize(leftStr.length());
-	for (uint i = 0; i < leftStr.length(); i++) {
+	for (uint i = 0, length = leftStr.length(); i < length; i++) {
 		result[i] = leftStr[i] ^ rightStr[i];
 	}
 	return result;
@@ -244,7 +295,6 @@ string Translate(string text, string &in srcLang, string &in dstLang) {
 	string querystring = createQuerystring(query);
 	string url = 'https://tmt.tencentcloudapi.com/?' + querystring + '&Signature=' + HostUrlEncode(signature);
 	string json = HostUrlGetString(url);
-	if (debug) HostPrintUTF8(json);
 	JsonValue data = parseJSON(json);
 
 	if (data.isObject()) {
@@ -252,12 +302,14 @@ string Translate(string text, string &in srcLang, string &in dstLang) {
 		if (response.isObject()) {
 			JsonValue targetText = response['TargetText'];
 			if (targetText.isString()) {
+				string translatedText = replace(targetText.asString(), '*', '\n');
+				if (debug) HostPrintUTF8(string(SrcLangTable[srcLang]) + '=>' + string(DstLangTable[dstLang]));
+				if (debug) HostPrintUTF8(text + '\n=>\n' + translatedText);
 				srcLang = 'UTF8';
 				dstLang = 'UTF8';
-				string translatedText = replace(targetText.asString(), '*', '\n');
-				if (debug) HostPrintUTF8(translatedText);
 				return translatedText;
 			}
+			if (debug) HostPrintUTF8(json);
 		}
 	}
 
