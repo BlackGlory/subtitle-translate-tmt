@@ -16,7 +16,7 @@ Real-time subtitle translate for PotPlayer using [Tencent Machine Translation](h
 
 1. [Download](https://github.com/BlackGlory/subtitle-translate-tmt/archive/master.zip)
 2. Unzip it
-3. Copy `SubtitleTranslate - tmt.as` and `SubtitleTranslate - tmt.ico` to `DAUM\PotPlayer\Extention\Subtitle\Translate` folder.
+3. Copy `SubtitleTranslate - tmt.as` and `SubtitleTranslate - tmt.ico` to `DAUM\PotPlayer\Extention\Subtitle\Translate` folder
 4. Run/Restart PotPlayer
 5. Menu->Subtitles->Subtitle Translation->Online Subtitle Translation Settings->Tencent Machine Translate->Login, input SecretId & SecretKey
 
