@@ -65,54 +65,25 @@ string secretId = '';
 string secretKey = '';
 
 datetime getUnix() {
-  array<datetime> timezone = {
-    datetime(1969, 12, 31, 12, 0, 0) // UTC-12:00
-  , datetime(1969, 12, 31, 13, 0, 0) // UTC-11:00
-  , datetime(1969, 12, 31, 14, 0, 0) // UTC-10:00
-  , datetime(1969, 12, 31, 14, 30, 0) // UTC-09:30
-  , datetime(1969, 12, 31, 15, 0, 0) // UTC-09:00
-  , datetime(1969, 12, 31, 16, 0, 0) // UTC-08:00
-  , datetime(1969, 12, 31, 17, 0, 0) // UTC-07:00
-  , datetime(1969, 12, 31, 18, 0, 0) // UTC-06:00
-  , datetime(1969, 12, 31, 19, 0, 0) // UTC-05:00
-  , datetime(1969, 12, 31, 20, 0, 0) // UTC-04:00
-  , datetime(1969, 12, 31, 20, 30, 0) // UTC-03:30
-  , datetime(1969, 12, 31, 21, 0, 0) // UTC-03:00
-  , datetime(1969, 12, 31, 22, 0, 0) // UTC-02:00
-  , datetime(1969, 12, 31, 23, 0, 0) // UTC-01:00
-  , datetime(1970, 1, 1, 0, 0, 0) // UTC+00:00
-  , datetime(1970, 1, 1, 1, 0, 0) // UTC+01:00
-  , datetime(1970, 1, 1, 2, 0, 0) // UTC+02:00
-  , datetime(1970, 1, 1, 3, 0, 0) // UTC+03:00
-  , datetime(1970, 1, 1, 3, 30, 0) // UTC+03:30
-  , datetime(1970, 1, 1, 4, 0, 0) // UTC+04:00
-  , datetime(1970, 1, 1, 4, 30, 0) // UTC+04:30
-  , datetime(1970, 1, 1, 5, 0, 0) // UTC+05:00
-  , datetime(1970, 1, 1, 5, 30, 0) // UTC+05:30
-  , datetime(1970, 1, 1, 5, 45, 0) // UTC+05:45
-  , datetime(1970, 1, 1, 6, 0, 0) // UTC+06:00
-  , datetime(1970, 1, 1, 6, 30, 0) // UTC+06:30
-  , datetime(1970, 1, 1, 7, 0, 0) // UTC+07:00
-  , datetime(1970, 1, 1, 8, 0, 0) // UTC+08:00
-  , datetime(1970, 1, 1, 8, 45, 0) // UTC+08:45
-  , datetime(1970, 1, 1, 9, 0, 0) // UTC+09:00
-  , datetime(1970, 1, 1, 9, 30, 0) // UTC+09:30
-  , datetime(1970, 1, 1, 10, 0, 0) // UTC+10:00
-  , datetime(1970, 1, 1, 10, 30, 0) // UTC+10:30
-  , datetime(1970, 1, 1, 11, 0, 0) // UTC+11:00
-  , datetime(1970, 1, 1, 11, 30, 0) // UTC+11:30
-  , datetime(1970, 1, 1, 12, 0, 0) // UTC+12:00
-  , datetime(1970, 1, 1, 12, 45, 0) // UTC+12:45
-  , datetime(1970, 1, 1, 13, 0, 0) // UTC+13:00
-  , datetime(1970, 1, 1, 14, 0, 0) // UTC+14:00
-  };
-  for (uint i = 0, length = timezone.length(); i < length; i++) {
-    datetime unix = timezone[i];
-    if (unix.get_year() == 1969 || unix.get_year() == 1970) { // invalid value will be reset to now
-      return unix;
-    }
+  // I know that hard-coding can solve this.
+  uint secondsOfMinute = 60;
+  uint secondsOfHour = 60 * secondsOfMinute;
+  uint secondsOfDay = 24 * secondsOfHour;
+  datetime now = datetime();
+  datetime nowGMT = datetime();
+  nowGMT.addGMT();
+  int timezone = nowGMT - now;
+  if (timezone > 0) {
+    uint hours = timezone / secondsOfHour;
+    uint minutes = (timezone - hours * secondsOfHour) / secondsOfMinute;
+    uint seconds = timezone - hours * secondsOfHour - minutes * secondsOfMinute;
+    return datetime(1970, 1, 1, hours, minutes, seconds);
+  } else {
+    uint hours = (secondsOfDay + timezone) / secondsOfHour;
+    uint minutes = ((secondsOfDay + timezone) - hours * secondsOfHour) / secondsOfMinute;
+    uint seconds = (secondsOfDay + timezone) - hours * secondsOfHour - minutes * secondsOfMinute;
+    return datetime(1969, 12, 31, hours, minutes, seconds);
   }
-  return datetime(1970, 1, 1);
 }
 
 uint getTimestamp() {
