@@ -19,6 +19,13 @@
 
 bool debug = false;
 
+string secretId = '';
+string secretKey = '';
+
+uint secondsOfMinute = 60;
+uint secondsOfHour = 3600;
+uint secondsOfDay = 86400;
+
 // https://cloud.tencent.com/document/api/551/15619
 dictionary DstLangTable = {
   {'zh', 'zh'} // 中文
@@ -61,35 +68,11 @@ dictionary SrcLangTable = {
 , {'th', 'th' } // 泰文
 };
 
-string secretId = '';
-string secretKey = '';
-
-datetime getUnix() {
-  // I know that hard-coding can solve this.
-  uint secondsOfMinute = 60;
-  uint secondsOfHour = 60 * secondsOfMinute;
-  uint secondsOfDay = 24 * secondsOfHour;
-  datetime now = datetime();
-  datetime nowGMT = datetime();
-  nowGMT.addGMT();
-  int timezone = nowGMT - now;
-  if (timezone > 0) {
-    uint hours = timezone / secondsOfHour;
-    uint minutes = (timezone - hours * secondsOfHour) / secondsOfMinute;
-    uint seconds = timezone - hours * secondsOfHour - minutes * secondsOfMinute;
-    return datetime(1970, 1, 1, hours, minutes, seconds);
-  } else {
-    uint hours = (secondsOfDay + timezone) / secondsOfHour;
-    uint minutes = ((secondsOfDay + timezone) - hours * secondsOfHour) / secondsOfMinute;
-    uint seconds = (secondsOfDay + timezone) - hours * secondsOfHour - minutes * secondsOfMinute;
-    return datetime(1969, 12, 31, hours, minutes, seconds);
-  }
-}
-
 uint getTimestamp() {
-  datetime unix = getUnix();
+  datetime fakeUnix = datetime(1970, 1, 2, 0, 0, 0); // datetime(1970, 1, 1) may an invalid value.
   datetime now = datetime();
-  uint timestamp = now - unix;
+  uint timestamp = now - fakeUnix;
+  timestamp += secondsOfDay; // patch for fakeUnix.
   return timestamp;
 }
 
