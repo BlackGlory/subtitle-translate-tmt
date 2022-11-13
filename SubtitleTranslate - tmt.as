@@ -20,7 +20,7 @@
 bool debug = false;
 
 string secretId = '';
-string secretKey = '';
+string secretKey = ''; // secretKey是一个长度为32的字符串, 包含数字、大写字母、小写字母
 
 uint secondsOfMinute = 60;
 uint secondsOfHour = 3600;
@@ -69,11 +69,34 @@ dictionary SrcLangTable = {
 };
 
 uint getTimestamp() {
-  datetime fakeUnix = datetime(1970, 1, 2, 0, 0, 0); // datetime(1970, 1, 1) may an invalid value.
+  // `datetime(1970, 1, 1)` may be an invalid value, which is why `datetime(1970, 1, 2)`
+  datetime fakeUnix = datetime(1970, 1, 2, 0, 0, 0);
   datetime now = datetime();
   uint timestamp = now - fakeUnix;
-  timestamp += secondsOfDay; // patch for fakeUnix.
+  timestamp += secondsOfDay; // patch `fakeUnix`
   return timestamp;
+}
+
+string byteToUTF8Char(uint byte) {
+  // AngelScript中的string类型可以视作一个字节数组
+  string result = '';
+  result.resize(1);
+  result[0] = byte;
+  return result;
+}
+
+string repeat(string str, uint times) {
+  string result = '';
+  for (uint i = 0; i < times; i++) {
+    result += str;
+  }
+  return result;
+}
+
+string replace(string str, string substr, string newSubstr) {
+  array<string> arr = str.split(substr);
+  string result = join(arr, newSubstr);
+  return result;
 }
 
 string createQuerystring(dictionary query) {
@@ -90,71 +113,91 @@ string createQuerystring(dictionary query) {
   return querystring;
 }
 
-// for debug
-/*
-void printHex(string str) {
-  string hexStr = '';
+// for debugging
+void printAsHex(string str) {
+  string hex = '';
   for (uint i = 0; i < str.length(); i++) {
-    hexStr += formatInt(str[i], 'H') + ' ';
+    // AngelScript中的string类型可以视作一个字节数组
+    hex += formatInt(str[i], 'H') + ' ';
   }
-  HostPrintUTF8(hexStr);
-}
-*/
-
-string createChar(uint bytechar) {
-  string result = '';
-  result.resize(1);
-  result[0] = bytechar;
-  return result;
+  HostPrintUTF8(hex);
 }
 
-string repeat(string str, uint times) {
-  string result = '';
-  for (uint i = 0; i < times; i++) {
-    result += str;
-  }
-  return result;
-}
+// 将十六进制表示转换为UTF8字符串
+// 幸运的是UTF8同时也是AngelScript的字符串编码方式
+string hexToUTF8(string hex) {
+  // 两位十六进制为一个字节
+  uint resultLength = hex.length() / 2;
 
-string xorStr(string leftStr, string rightStr) {
-  string result = '';
-  result.resize(leftStr.length());
-  for (uint i = 0, length = leftStr.length(); i < length; i++) {
-    result[i] = leftStr[i] ^ rightStr[i];
-  }
-  return result;
-}
-
-string hex2bin(string hexStr) {
-  uint resultLength = hexStr.length() / 2;
+  // AngelScript中的string类型可以视作一个字节数组
   string result = '';
   result.resize(resultLength);
   for (uint i = 0; i < resultLength; i++) {
-    result[i] = parseInt(hexStr.substr(i * 2, 2), 16);
+    result[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return result;
+}
+
+// AngelScript中的string类型可以视作一个字节数组
+string xorBytes(string leftBytes, string rightBytes) {
+  string result = '';
+  result.resize(leftBytes.length());
+  for (uint i = 0; i < leftBytes.length(); i++) {
+    result[i] = leftBytes[i] ^ rightBytes[i];
   }
   return result;
 }
 
 string hmacSHA1(string key, string message) {
-  uint blockSize = 64;
+  uint blockSize = 64; // bytes
 
   if (key.length() > blockSize) {
+    // HostHashSHA1函数的返回值是长度为40的十六进制字符串, 而不是Hash值本身.
     key = HostHashSHA1(key);
   }
 
+  // 如果字节数少于blockSize, 则在右侧填充零
   if (key.length() < blockSize) {
-    key += repeat(createChar(0x00), blockSize - key.length());
+    key += repeat(
+      byteToUTF8Char(0)
+    , blockSize - key.length()
+    );
   }
 
-  string ipadKey = xorStr(repeat(createChar(0x36), blockSize), key);
-  string opadKey = xorStr(repeat(createChar(0x5c), blockSize), key);
+  string ipadKey = xorBytes(
+    repeat(byteToUTF8Char(0x36), blockSize)
+  , key
+  );
+  string opadKey = xorBytes(
+    repeat(byteToUTF8Char(0x5c), blockSize)
+  , key
+  );
 
-  return HostHashSHA1(opadKey + hex2bin(HostHashSHA1(ipadKey + message)));
+  // HostHashSHA1函数的返回值是长度为40的十六进制字符串, 而不是Hash值本身.
+  return hexToUTF8(
+    HostHashSHA1(
+      opadKey
+      // HostHashSHA1函数的返回值是长度为40的十六进制字符串, 而不是Hash值本身.
+    + hexToUTF8(
+        HostHashSHA1(ipadKey + message)
+      )
+    )
+  );
 }
 
 // https://cloud.tencent.com/document/api/213/15693
-string createSignature(string querystring, string host, string method = 'GET', string path = '/') {
-  return HostBase64Enc(hex2bin(hmacSHA1(secretKey, method + host + path + '?' + querystring)));
+string createSignature(
+  string querystring
+, string host
+, string method = 'GET'
+, string path = '/'
+) {
+  return HostBase64Enc(
+    hmacSHA1(
+      secretKey
+    , method + host + path + '?' + querystring
+    )
+  );
 }
 
 JsonValue parseJSON(string json) {
@@ -162,12 +205,6 @@ JsonValue parseJSON(string json) {
   JsonValue data;
   reader.parse(json, data);
   return data;
-}
-
-string replace(string str, string substr, string newSubstr) {
-  array<string> arr = str.split(substr);
-  string result = join(arr, newSubstr);
-  return result;
 }
 
 string GetTitle() {
@@ -209,13 +246,11 @@ string GetPasswordText() {
   return 'SecretKey:';
 }
 
-string ServerLogin(string user, string pass) {
-  if (user.empty() || pass.empty()) {
-    return 'fail';
-  }
+string ServerLogin(string username, string password) {
+  if (username.empty() || password.empty()) return 'fail';
 
-  secretId = user;
-  secretKey = pass;
+  secretId = username;
+  secretKey = password;
   return '200 ok';
 }
 
@@ -225,17 +260,19 @@ void ServerLogout() {
 }
 
 array<string> GetSrcLangs() {
-  array<string> ret = SrcLangTable.getKeys();
-  return ret;
+  array<string> result = SrcLangTable.getKeys();
+  return result;
 }
 
 array<string> GetDstLangs() {
-  array<string> ret = DstLangTable.getKeys();
-  return ret;
+  array<string> result = DstLangTable.getKeys();
+  return result;
 }
 
 string Translate(string text, string &in srcLang, string &in dstLang) {
-  if (debug) HostOpenConsole();
+  if (debug) {
+    HostOpenConsole();
+  }
 
   dictionary query = {
     {'Action', 'TextTranslate'}
@@ -253,23 +290,35 @@ string Translate(string text, string &in srcLang, string &in dstLang) {
   string signature = createSignature(createQuerystring(query), 'tmt.tencentcloudapi.com');
   query['SourceText'] = HostUrlEncode(string(query['SourceText']));
   string querystring = createQuerystring(query);
-  string url = 'https://tmt.tencentcloudapi.com/?' + querystring + '&Signature=' + HostUrlEncode(signature);
+  string url = 'https://tmt.tencentcloudapi.com/?'
+             + querystring + '&'
+             + 'Signature=' + HostUrlEncode(signature);
   string json = HostUrlGetString(url);
+  if (debug) {
+    HostPrintUTF8(json);
+  }
   JsonValue data = parseJSON(json);
 
   if (data.isObject()) {
     JsonValue response = data['Response'];
+
     if (response.isObject()) {
       JsonValue targetText = response['TargetText'];
+
       if (targetText.isString()) {
         string translatedText = replace(targetText.asString(), '*', '\n');
-        if (debug) HostPrintUTF8(string(SrcLangTable[srcLang]) + '=>' + string(DstLangTable[dstLang]));
-        if (debug) HostPrintUTF8(text + '\n=>\n' + translatedText);
+
+        if (debug) {
+          HostPrintUTF8(
+            string(SrcLangTable[srcLang]) + '=>' + string(DstLangTable[dstLang])
+          );
+          HostPrintUTF8(text + '\n=>\n' + translatedText);
+        }
+
         srcLang = 'UTF8';
         dstLang = 'UTF8';
         return translatedText;
       }
-      if (debug) HostPrintUTF8(json);
     }
   }
 
