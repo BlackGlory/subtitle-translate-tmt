@@ -1,8 +1,6 @@
-﻿/*
-  real time subtitle translate for PotPlayer using Tencent Machine Translation API
-  https://github.com/BlackGlory/subtitle-translate-tmt
-  https://cloud.tencent.com/product/tmt
-*/
+﻿// Real-time subtitle translator for PotPlayer using Tencent Machine Translation API
+// https://github.com/BlackGlory/subtitle-translate-tmt
+// https://cloud.tencent.com/product/tmt
 
 // string GetTitle()                             -> get title for UI
 // string GetVersion                            -> get version for manage
@@ -20,7 +18,7 @@
 bool debug = false;
 
 string secretId = '';
-string secretKey = ''; // secretKey是一个长度为32的字符串, 包含数字、大写字母、小写字母
+string secretKey = ''; // secretKey是一个长度为32的字符串, 包含数字、大写字母、小写字母.
 
 uint secondsOfMinute = 60;
 uint secondsOfHour = 3600;
@@ -69,33 +67,33 @@ dictionary SrcLangTable = {
 };
 
 uint getTimestamp() {
-  // `datetime(1970, 1, 1)` may be an invalid value, which is why `datetime(1970, 1, 2)`
+  // 由于PotPlayer的实施问题, Unix时间`datetime(1970, 1, 1)`可能是无效值(时区原因?),
+  // 通过改用`datetime(1970, 1, 2)`解决此问题.
   datetime fakeUnix = datetime(1970, 1, 2, 0, 0, 0);
   datetime now = datetime();
   uint timestamp = now - fakeUnix;
-  timestamp += secondsOfDay; // patch `fakeUnix`
+  timestamp += secondsOfDay;
   return timestamp;
 }
 
-string byteToUTF8Char(uint byte) {
-  // AngelScript中的string类型可以视作一个字节数组
+string byteToBytes(uint8 byte) {
   string result = '';
   result.resize(1);
   result[0] = byte;
   return result;
 }
 
-string repeat(string str, uint times) {
+string repeat(string bytes, uint times) {
   string result = '';
   for (uint i = 0; i < times; i++) {
-    result += str;
+    result += bytes;
   }
   return result;
 }
 
-string replace(string str, string substr, string newSubstr) {
-  array<string> arr = str.split(substr);
-  string result = join(arr, newSubstr);
+string replace(string bytes, string subBytes, string newSubBytes) {
+  array<string> arr = bytes.split(subBytes);
+  string result = join(arr, newSubBytes);
   return result;
 }
 
@@ -114,31 +112,26 @@ string createQuerystring(dictionary query) {
 }
 
 // for debugging
-void printAsHex(string str) {
-  string hex = '';
-  for (uint i = 0; i < str.length(); i++) {
-    // AngelScript中的string类型可以视作一个字节数组
-    hex += formatInt(str[i], 'H') + ' ';
+void printBytesAsHexEncodedString(string bytes) {
+  string result = '';
+  for (uint i = 0; i < bytes.length(); i++) {
+    result += formatInt(bytes[i], 'H') + ' ';
   }
-  HostPrintUTF8(hex);
+  HostPrintUTF8(result);
 }
 
-// 将十六进制表示转换为UTF8字符串
-// 幸运的是UTF8同时也是AngelScript的字符串编码方式
-string hexToUTF8(string hex) {
-  // 两位十六进制为一个字节
-  uint resultLength = hex.length() / 2;
+string hexEncodedStringToBytes(string str) {
+  uint resultLength = str.length() / 2;
 
-  // AngelScript中的string类型可以视作一个字节数组
   string result = '';
   result.resize(resultLength);
   for (uint i = 0; i < resultLength; i++) {
-    result[i] = parseInt(hex.substr(i * 2, 2), 16);
+    result[i] = parseInt(str.substr(i * 2, 2), 16);
   }
+
   return result;
 }
 
-// AngelScript中的string类型可以视作一个字节数组
 string xorBytes(string leftBytes, string rightBytes) {
   string result = '';
   result.resize(leftBytes.length());
@@ -152,33 +145,33 @@ string hmacSHA1(string key, string message) {
   uint blockSize = 64; // bytes
 
   if (key.length() > blockSize) {
-    // HostHashSHA1函数的返回值是长度为40的十六进制字符串, 而不是Hash值本身.
+    // HostHashSHA1函数的返回值是经过十六进制编码后的哈希值(长度为40的字符串), 需要将其转换为字节数组的形式.
     key = HostHashSHA1(key);
   }
 
-  // 如果字节数少于blockSize, 则在右侧填充零
+  // 如果字节数少于blockSize, 则在右侧填充零.
   if (key.length() < blockSize) {
     key += repeat(
-      byteToUTF8Char(0)
+      byteToBytes(0)
     , blockSize - key.length()
     );
   }
 
   string ipadKey = xorBytes(
-    repeat(byteToUTF8Char(0x36), blockSize)
+    repeat(byteToBytes(0x36), blockSize)
   , key
   );
   string opadKey = xorBytes(
-    repeat(byteToUTF8Char(0x5c), blockSize)
+    repeat(byteToBytes(0x5c), blockSize)
   , key
   );
 
-  // HostHashSHA1函数的返回值是长度为40的十六进制字符串, 而不是Hash值本身.
-  return hexToUTF8(
+  // HostHashSHA1函数的返回值是经过十六进制编码后的哈希值(长度为40的字符串), 需要将其转换为字节数组的形式.
+  return hexEncodedStringToBytes(
     HostHashSHA1(
       opadKey
-      // HostHashSHA1函数的返回值是长度为40的十六进制字符串, 而不是Hash值本身.
-    + hexToUTF8(
+      // HostHashSHA1函数的返回值是经过十六进制编码后的哈希值(长度为40的字符串), 需要将其转换为字节数组的形式.
+    + hexEncodedStringToBytes(
         HostHashSHA1(ipadKey + message)
       )
     )
