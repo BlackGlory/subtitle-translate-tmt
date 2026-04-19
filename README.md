@@ -1,5 +1,5 @@
 # subtitle-translate-tmt
-使用[腾讯机器翻译](https://cloud.tencent.com/product/tmt) API 为 PotPlayer 翻译实时字幕.
+使用[腾讯机器翻译](https://cloud.tencent.com/product/tmt) API 为 PotPlayer 翻译字幕.
 
 ## 必要条件
 - PotPlayer 版本 >= 1.7.20977
